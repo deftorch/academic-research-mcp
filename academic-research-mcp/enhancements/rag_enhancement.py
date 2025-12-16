@@ -16,16 +16,13 @@ try:
     from sentence_transformers import SentenceTransformer
     from rank_bm25 import BM25Okapi
     import numpy as np
+    IS_AVAILABLE = True
 except ImportError:
-    print("Installing RAG dependencies...")
-    import subprocess
-
-    subprocess.check_call(["pip", "install", "chromadb", "sentence-transformers", "rank_bm25", "numpy"])
-    import chromadb
-    from chromadb.config import Settings
-    from sentence_transformers import SentenceTransformer
-    from rank_bm25 import BM25Okapi
-    import numpy as np
+    chromadb = None
+    SentenceTransformer = None
+    BM25Okapi = None
+    np = None
+    IS_AVAILABLE = False
 
 from ..mcp_instance import mcp
 
@@ -37,23 +34,25 @@ logger = logging.getLogger(__name__)
 
 # Initialize embedding model (384-dimensional, fast and accurate)
 # This model runs efficiently on CPU or GPU
-try:
-    EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
-    logger.info("✓ Embedding model loaded (all-MiniLM-L6-v2)")
-except Exception as e:
-    logger.error(f"Failed to load embedding model: {e}")
-    EMBEDDING_MODEL = None
+EMBEDDING_MODEL = None
+if SentenceTransformer:
+    try:
+        EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+        logger.info("✓ Embedding model loaded (all-MiniLM-L6-v2)")
+    except Exception as e:
+        logger.error(f"Failed to load embedding model: {e}")
 
 # Initialize ChromaDB client (persistent vector database)
 VECTORDB_PATH = Path("./paper_vectordb")
 VECTORDB_PATH.mkdir(exist_ok=True)
 
-try:
-    chroma_client = chromadb.Client(Settings(persist_directory=str(VECTORDB_PATH), anonymized_telemetry=False))
-    logger.info(f"✓ Vector database initialized: {VECTORDB_PATH}")
-except Exception as e:
-    logger.error(f"Failed to initialize ChromaDB: {e}")
-    chroma_client = None
+chroma_client = None
+if chromadb:
+    try:
+        chroma_client = chromadb.Client(Settings(persist_directory=str(VECTORDB_PATH), anonymized_telemetry=False))
+        logger.info(f"✓ Vector database initialized: {VECTORDB_PATH}")
+    except Exception as e:
+        logger.error(f"Failed to initialize ChromaDB: {e}")
 
 # Get or create collection
 try:

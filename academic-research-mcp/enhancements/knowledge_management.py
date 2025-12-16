@@ -12,21 +12,26 @@ FINAL FEATURES - The Missing Pieces:
 """
 
 import logging
+import os
 from typing import Dict, List, Optional
 
 try:
     import requests
     from pyzotero import zotero
 except ImportError:
-    print("Installing knowledge management dependencies...")
-    import subprocess
-
-    subprocess.check_call(["pip", "install", "pyzotero", "requests"])
-    import requests
-    from pyzotero import zotero
+    # Disable auto-install to avoid bloat and unexpected behaviors
+    requests = None
+    zotero = None
+    # print("Installing knowledge management dependencies...")
+    # import subprocess
+    # subprocess.check_call(["pip", "install", "pyzotero", "requests"])
+    # import requests
+    # from pyzotero import zotero
 
 from ..mcp_instance import mcp
-from .rag_enhancement import index_papers_to_vectordb
+# Avoid importing directly to prevent circular dependency or error if optional modules not present
+# from .rag_enhancement import index_papers_to_vectordb
+# Use local import inside function instead
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +40,11 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # User should set these (or pass as parameters)
-ZOTERO_LIBRARY_ID = None  # Set to your Zotero user ID
-ZOTERO_API_KEY = None  # Get from https://www.zotero.org/settings/keys
-NOTION_API_KEY = None  # Get from https://www.notion.so/my-integrations
-NOTION_DATABASE_ID = None  # Your Notion database ID
+ZOTERO_LIBRARY_ID = os.environ.get("ZOTERO_LIBRARY_ID")
+ZOTERO_API_KEY = os.environ.get("ZOTERO_API_KEY")
+NOTION_API_KEY = os.environ.get("NOTION_API_KEY")
+NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID")
+SHERPA_ROMEO_API_KEY = os.environ.get("SHERPA_ROMEO_API_KEY")
 
 # ============================================================================
 # TOOL 1: ZOTERO INTEGRATION
@@ -55,6 +61,9 @@ async def sync_to_zotero(
     """
     Sync papers to Zotero library with PDF attachments and metadata.
     """
+    if zotero is None:
+        return {"error": "Zotero integration not available. Install dependencies: pip install pyzotero requests"}
+
     lib_id = library_id or ZOTERO_LIBRARY_ID
     key = api_key or ZOTERO_API_KEY
 
@@ -167,6 +176,10 @@ async def import_from_zotero(
     """
     Import papers FROM Zotero library into MCP system.
     """
+    if zotero is None:
+        logger.error("Zotero integration not available. Install dependencies: pip install pyzotero requests")
+        return []
+
     lib_id = library_id or ZOTERO_LIBRARY_ID
     key = api_key or ZOTERO_API_KEY
 
@@ -219,8 +232,12 @@ async def import_from_zotero(
         # Index to vector database if requested
         if index_to_vectordb and papers:
             try:
+                # Lazy import
+                from .rag_enhancement import index_papers_to_vectordb
                 await index_papers_to_vectordb(papers)
                 logger.info(f"Indexed {len(papers)} Zotero papers to vector database")
+            except ImportError:
+                logger.warning("RAG enhancement not available, skipping index")
             except Exception as e:
                 logger.warning(f"Could not index to vectordb: {e}")
 
@@ -245,6 +262,9 @@ async def export_to_notion(
     """
     Export papers to Notion database with rich properties.
     """
+    if requests is None:
+        return {"error": "Notion integration not available. Install dependencies: pip install requests"}
+
     db_id = database_id or NOTION_DATABASE_ID
     key = api_key or NOTION_API_KEY
 
@@ -342,6 +362,9 @@ async def search_by_orcid(orcid_id: str, max_results: int = 50) -> Dict:
     """
     Search papers by ORCID iD (unique researcher identifier).
     """
+    if requests is None:
+        return {"error": "ORCID integration not available. Install dependencies: pip install requests"}
+
     logger.info(f"Searching ORCID: {orcid_id}")
 
     # Clean ORCID format
@@ -427,16 +450,21 @@ async def check_publishing_policy(issn: Optional[str] = None, journal_title: Opt
     """
     Check journal's self-archiving and copyright policies.
     """
+    if requests is None:
+        return {"error": "Sherpa Romeo integration not available. Install dependencies: pip install requests"}
+
     logger.info(f"Checking publishing policy for ISSN: {issn} / Journal: {journal_title}")
 
     try:
         # Sherpa Romeo API v2
         base_url = "https://v2.sherpa.ac.uk/cgi/retrieve"
 
+        api_key = SHERPA_ROMEO_API_KEY or "YOUR_SHERPA_ROMEO_API_KEY"
+
         params = {
             "item-type": "publication",
             "format": "Json",
-            "api-key": "YOUR_SHERPA_ROMEO_API_KEY",  # Free registration required
+            "api-key": api_key,  # Free registration required
         }
 
         if issn:
@@ -484,6 +512,9 @@ async def get_altmetrics(doi: Optional[str] = None, arxiv_id: Optional[str] = No
     """
     Get social media attention and real-world impact metrics.
     """
+    if requests is None:
+        return {"error": "Altmetrics integration not available. Install dependencies: pip install requests"}
+
     logger.info(f"Getting altmetrics for DOI: {doi} / arXiv: {arxiv_id}")
 
     try:

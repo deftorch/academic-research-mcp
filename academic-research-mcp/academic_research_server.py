@@ -135,6 +135,9 @@ if __name__ == "__main__":
        • Cache TTL: {CACHE_TTL}s
        • Max retries: {MAX_RETRIES}
 
+    ℹ️  Note: For full PDF text extraction, ensure 'marker-pdf' is installed.
+        pip install marker-pdf (requires GPU/Torch)
+
     📝 Logs: mcp_server.log
 
     Starting server...

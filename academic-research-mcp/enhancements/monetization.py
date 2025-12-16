@@ -6,13 +6,55 @@ MONETIZATION STRATEGY with tiered access to premium APIs
 """
 
 import logging
+import sqlite3
+import json
+import os
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional
+from pathlib import Path
 
 from ..mcp_instance import mcp
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# DATABASE SETUP
+# ============================================================================
+
+def get_db_path() -> Path:
+    """Get database path from env or default"""
+    return Path(os.environ.get("ACADEMIC_DB_PATH", "user_registry.db"))
+
+def get_db_connection():
+    """Get database connection"""
+    return sqlite3.connect(get_db_path())
+
+def init_db():
+    """Initialize database tables"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                tier TEXT NOT NULL,
+                daily_calls INTEGER DEFAULT 0,
+                hourly_calls INTEGER DEFAULT 0,
+                last_reset_daily TIMESTAMP,
+                last_reset_hourly TIMESTAMP,
+                api_key TEXT
+            )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+
+# Initialize strictly when needed, or we can rely on functions calling init_db
+# For now, we call it here but inside a try-except block to be safe,
+# but ideally it should be called on server startup.
+# We will make the tools ensure DB exists.
 
 # ============================================================================
 # TIER SYSTEM CONFIGURATION
@@ -95,29 +137,59 @@ FEATURE_ACCESS = {
 class UserSubscription:
     """Track user subscription and usage"""
 
-    def __init__(self, user_id: str, tier: SubscriptionTier = SubscriptionTier.FREE):
+    def __init__(self, user_id: str, tier: SubscriptionTier = SubscriptionTier.FREE,
+                 daily_calls: int = 0, hourly_calls: int = 0,
+                 last_reset_daily: datetime = None, last_reset_hourly: datetime = None,
+                 api_key: str = None):
         self.user_id = user_id
         self.tier = tier
-        self.daily_calls = 0
-        self.hourly_calls = 0
-        self.last_reset_daily = datetime.now()
-        self.last_reset_hourly = datetime.now()
-        self.api_key = None
+        self.daily_calls = daily_calls
+        self.hourly_calls = hourly_calls
+        self.last_reset_daily = last_reset_daily or datetime.now()
+        self.last_reset_hourly = last_reset_hourly or datetime.now()
+        self.api_key = api_key
         self.features = FEATURE_ACCESS[tier]
         self.rate_limits = RATE_LIMITS[tier]
+
+    def save(self):
+        """Save user state to database"""
+        init_db()  # Ensure DB exists
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO users
+            (user_id, tier, daily_calls, hourly_calls, last_reset_daily, last_reset_hourly, api_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            self.user_id,
+            self.tier.value,
+            self.daily_calls,
+            self.hourly_calls,
+            self.last_reset_daily.isoformat(),
+            self.last_reset_hourly.isoformat(),
+            self.api_key
+        ))
+        conn.commit()
+        conn.close()
 
     def can_make_request(self) -> tuple[bool, Optional[str]]:
         """Check if user can make request based on tier limits"""
         # Reset counters if needed
         now = datetime.now()
+        updated = False
 
         if (now - self.last_reset_daily).total_seconds() > 86400:
             self.daily_calls = 0
             self.last_reset_daily = now
+            updated = True
 
         if (now - self.last_reset_hourly).total_seconds() > 3600:
             self.hourly_calls = 0
             self.last_reset_hourly = now
+            updated = True
+
+        if updated:
+            self.save()
 
         # Check limits
         if self.daily_calls >= self.rate_limits["calls_per_day"]:
@@ -135,32 +207,47 @@ class UserSubscription:
         """Increment usage counters"""
         self.daily_calls += 1
         self.hourly_calls += 1
+        self.save()
 
     def has_feature(self, feature: str) -> bool:
         """Check if user has access to feature"""
         return self.features.get(feature, False)
 
 
-# Global user registry (in production, use database)
-USER_REGISTRY: Dict[str, UserSubscription] = {}
-
-
 def get_or_create_user(user_id: str, api_key: Optional[str] = None) -> UserSubscription:
     """Get or create user subscription"""
-    if user_id not in USER_REGISTRY:
+    init_db()  # Ensure DB exists
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return UserSubscription(
+            user_id=row[0],
+            tier=SubscriptionTier(row[1]),
+            daily_calls=row[2],
+            hourly_calls=row[3],
+            last_reset_daily=datetime.fromisoformat(row[4]),
+            last_reset_hourly=datetime.fromisoformat(row[5]),
+            api_key=row[6]
+        )
+    else:
         # Determine tier from API key
         tier = SubscriptionTier.FREE
         if api_key:
             tier = validate_api_key(api_key)
 
-        USER_REGISTRY[user_id] = UserSubscription(user_id, tier)
-
-    return USER_REGISTRY[user_id]
+        user = UserSubscription(user_id, tier, api_key=api_key)
+        user.save()
+        return user
 
 
 def validate_api_key(api_key: str) -> SubscriptionTier:
     """Validate API key and return tier (mock - use real validation in production)"""
-    # In production, validate against Stripe or database
+    # TODO: Replace this mock validation with real payment gateway integration (Stripe/PayPal)
+    # The current logic is insecure and for demonstration only.
     if api_key.startswith("sk_pro_"):
         return SubscriptionTier.PRO
     elif api_key.startswith("sk_ent_"):

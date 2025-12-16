@@ -35,7 +35,7 @@ MAX_RETRIES = 3
 REQUEST_TIMEOUT = 30
 
 # ===== PERSISTENT CACHE =====
-CACHE_DIR = os.path.join(os.getcwd(), ".cache_data")
+CACHE_DIR = os.environ.get("ACADEMIC_CACHE_DIR", os.path.join(os.getcwd(), ".cache_data"))
 _cache = Cache(CACHE_DIR)
 # Configure default expiration time for cache items
 _cache.expire = CACHE_TTL
