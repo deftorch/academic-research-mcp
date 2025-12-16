@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+.git
+.gitignore
+.cache_data/
+paper_vectordb/
+tests/
+test_report.md
+benchmark_results.json
+mcp_server.log

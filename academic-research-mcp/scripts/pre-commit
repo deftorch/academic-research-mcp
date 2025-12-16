@@ -1,0 +1,31 @@
+#!/bin/bash
+# Simple pre-commit hook script
+
+echo "Running pre-commit checks..."
+
+# 1. Check formatting
+echo "[1/3] Checking formatting with ruff..."
+ruff format --check .
+if [ $? -ne 0 ]; then
+    echo "❌ Formatting issues found. Run 'ruff format .' to fix."
+    exit 1
+fi
+
+# 2. Check linting
+echo "[2/3] Checking linting with ruff..."
+ruff check .
+if [ $? -ne 0 ]; then
+    echo "❌ Linting issues found. Run 'ruff check .' to fix."
+    exit 1
+fi
+
+# 3. Check types (optional/soft fail for now)
+echo "[3/3] Checking types with mypy..."
+mypy .
+if [ $? -ne 0 ]; then
+    echo "⚠️  Type issues found. Please review mypy output."
+    # exit 1  # Uncomment to enforce strict typing
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0
