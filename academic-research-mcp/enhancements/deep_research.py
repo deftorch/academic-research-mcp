@@ -90,6 +90,10 @@ class CircuitBreaker:
 # Global circuit breaker instance
 _circuit_breaker = CircuitBreaker()
 
+# Concurrency limit
+MAX_CONCURRENT_REQUESTS = 5
+_semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
 # ============================================================================
 # TOOL 1: DEEP RESEARCH MODE (RECURSIVE)
 # ============================================================================
@@ -208,10 +212,11 @@ async def deep_research(
             if not check_budget():
                  return []
             try:
-                # We increment manually here, but note that race conditions in updating request_count
-                # might occur. For simple limiting, this is acceptable.
-                # In strict envs, use asyncio.Lock() or atomic counter.
-                return await search_semantic_scholar(q, max_results=5)
+                async with _semaphore:
+                    # We increment manually here, but note that race conditions in updating request_count
+                    # might occur. For simple limiting, this is acceptable.
+                    # In strict envs, use asyncio.Lock() or atomic counter.
+                    return await search_semantic_scholar(q, max_results=5)
             except Exception as e:
                 logger.warning(f"Failed to search question '{q}': {e}")
                 return []
@@ -261,7 +266,8 @@ async def deep_research(
             if not check_budget():
                 return []
             try:
-                return await search_semantic_scholar(q, max_results=5)
+                async with _semaphore:
+                    return await search_semantic_scholar(q, max_results=5)
             except Exception:
                 return []
 

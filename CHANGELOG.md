@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-05-25
+
+### Added
+- **Monetization Persistence**: Implemented SQLite-backed user registry (`user_registry.db`) in `monetization.py` to prevent data loss on restart. Added `ACADEMIC_DB_PATH` env var support.
+- **Deep Research Optimization**: Added `asyncio.Semaphore` based concurrency limiting to `deep_research.py` to prevent rate-limiting and resource exhaustion.
+- **Configurable Caching**: Added `ACADEMIC_CACHE_DIR` environment variable support in `utils.py` to allow custom cache locations (essential for Docker volumes).
+- **Optional Dependencies**: Heavy ML libraries (Torch, ChromaDB, Sentence Transformers) and external integrations (Zotero, Notion) are now fully optional. The server gracefully degrades functionality if they are missing.
+- **Full Text Support Notice**: Added startup banner notification about `marker-pdf` requirement for full-text extraction capabilities.
+
+### Changed
+- **Dependency Management**: Split dependencies into `requirements.txt` (lightweight core) and `requirements-full.txt` (full features including ML/RAG) to resolve "Dependency Bloat".
+- **Robustness**: Improved `knowledge_management.py` and `rag_enhancement.py` to safely handle missing optional dependencies without crashing at runtime.
+- **Initialization**: Refactored database and client initialization to be lazy/on-demand where appropriate.
+
 ## [1.2.0] - 2025-05-24
 
 ### Added
