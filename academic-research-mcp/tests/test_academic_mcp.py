@@ -26,8 +26,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import the server modules directly to test functions
 try:
     import research_tools
-except ImportError:
-    print("❌ Error: research_tools module not found")
+except ImportError as e:
+    print(f"❌ Error: research_tools module not found: {e}")
     print("   Make sure you are running this from the tests directory or root")
     exit(1)
 
@@ -90,7 +90,7 @@ async def test_individual_apis():
             "status": "PASS",
             "papers": len(papers),
             "latency": round(elapsed, 2),
-            "has_pdfs": all(p.get("pdf_url") for p in papers),
+            "has_pdfs": all(p.pdf_url for p in papers),
         }
         print_test("arXiv", "PASS", f"{len(papers)} papers in {elapsed:.2f}s")
     except Exception as e:
@@ -105,7 +105,7 @@ async def test_individual_apis():
             "status": "PASS",
             "papers": len(papers),
             "latency": round(elapsed, 2),
-            "has_citations": any(p.get("citation_count", 0) > 0 for p in papers),
+            "has_citations": any(p.citation_count > 0 for p in papers),
         }
         print_test("Semantic Scholar", "PASS", f"{len(papers)} papers in {elapsed:.2f}s")
     except Exception as e:
@@ -217,11 +217,11 @@ async def test_quality_assessment():
 
         tiers = {}
         for p in scored:
-            tier = p.get("quality_tier", "Unknown")
+            tier = getattr(p, "quality_tier", None) or "Unknown"
             tiers[tier] = tiers.get(tier, 0) + 1
 
         if scored:
-            avg_score = sum(p.get("quality_score", 0) for p in scored) / len(scored)
+            avg_score = sum(getattr(p, "quality_score", 0) for p in scored) / len(scored)
         else:
             avg_score = 0
 
