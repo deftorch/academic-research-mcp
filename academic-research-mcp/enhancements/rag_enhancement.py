@@ -12,7 +12,10 @@ from typing import Dict, List, Optional
 
 try:
     import chromadb
-    from chromadb.config import Settings
+    try:
+        from chromadb.config import Settings
+    except ImportError:
+        from chromadb import Settings
     from sentence_transformers import SentenceTransformer
     from rank_bm25 import BM25Okapi
     import numpy as np
@@ -22,12 +25,22 @@ except ImportError:
 
     subprocess.check_call(["pip", "install", "chromadb", "sentence-transformers", "rank_bm25", "numpy"])
     import chromadb
-    from chromadb.config import Settings
+    try:
+        from chromadb.config import Settings
+    except ImportError:
+        from chromadb import Settings
     from sentence_transformers import SentenceTransformer
     from rank_bm25 import BM25Okapi
     import numpy as np
 
-from ..mcp_instance import mcp
+try:
+    from ..mcp_instance import mcp
+except ImportError:
+    # If running as script/test or direct import
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from mcp_instance import mcp
 
 logger = logging.getLogger(__name__)
 
