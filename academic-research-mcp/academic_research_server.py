@@ -103,14 +103,15 @@ except ImportError as e:
     DEEP_RESEARCH_AVAILABLE = False
     print(f"⚠️  Deep research not available: {e}")
 
-# Import Monetization (OPTIONAL)
+# Import Premium Integrations (BYOK)
 try:
-    from enhancements import monetization
-
-    MONETIZATION_AVAILABLE = True
-except ImportError:
-    MONETIZATION_AVAILABLE = False
-    # print(f"⚠️  Monetization not available: {e}") # Optional, maybe not needed for everyone
+    # Asumsi Anda mengubah nama file jadi premium_integrations.py
+    # Jika tetap monetization.py, tidak perlu ubah nama import, cuma isinya saja.
+    from enhancements import premium_integrations
+    PREMIUM_AVAILABLE = True
+except ImportError as e:
+    PREMIUM_AVAILABLE = False
+    print(f"⚠️  Premium integrations not available: {e}")
 
 # ============================================================================
 # MAIN ENTRY POINT
