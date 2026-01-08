@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import asyncio
 from typing import Any, Dict, Optional
 
 import httpx
@@ -140,9 +141,6 @@ def clean_text(text: str) -> str:
 # ============================================================================
 # API CLIENT WITH RETRY LOGIC
 # ============================================================================
-
-
-import asyncio
 
 @retry(
     stop=stop_after_attempt(MAX_RETRIES),

@@ -1,21 +1,49 @@
-[tool.ruff]
-select = ["E", "F", "I"]
-ignore = []
-line-length = 120
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
+[project]
+name = "academic-research"
+version = "1.0.0"
+description = "Autonomous Academic Research Library and MCP Server"
+authors = [
+  { name="Academic Research MCP Project", email="your.email@university.edu" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "fastmcp",
+    "httpx",
+    "diskcache",
+    "fuzzywuzzy",
+    "tenacity",
+    "feedparser",
+    "pydantic",
+    "python-Levenshtein",
+]
 
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
+[project.optional-dependencies]
+full = [
+    "chromadb",
+    "marker-pdf",
+    "networkx",
+    "plotly",
+    "python-louvain",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "scikit-learn",
+    "pyzotero",
+    "requests"
+]
 
-[[tool.mypy.overrides]]
-module = "tests.*"
-ignore_errors = true
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
